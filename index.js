@@ -2,6 +2,9 @@ const http = require('http');
 const fs = require('fs');
 const WebSocket = require('ws');
 
+// Use the PORT provided by Render, or fallback to 8080 if not set
+const port = process.env.PORT || 8080;
+
 const server = http.createServer((req, res) => {
     // Serve the index.html file
     fs.readFile('index.html', (err, data) => {
@@ -33,7 +36,7 @@ wss.on('connection', (ws) => {
     });
 });
 
-// Start the server on port 8080
-server.listen(8080, () => {
-    console.log('Server is running on http://localhost:8080');
+// Start the server on the dynamically assigned port
+server.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
 });
