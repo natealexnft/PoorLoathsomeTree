@@ -246,60 +246,73 @@ let startTime = null; // Track when the race starts
 
     // When a message is received from the server
     ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
+        const messageData = event.data;
 
-        switch (message.type) {
-            case 'startRace':
-                // Update player data with the one received from the server
-                playerData = message.players;
-                renderPlayers();
-                break;
-
-            case 'laneChange':
-                // Update the lane change for a specific player
-                const player = playerData.find(p => p.id === message.playerId);
-                if (player) {
-                    player.lane = message.newLane;
-                    player.laneSwitches = message.laneSwitches;
-                    updateLaneChangesDisplay();
-                    updateBarChart();
-                }
-                break;
-
-            case 'updateDistance':
-                // Update the distances for players
-                message.players.forEach(updatedPlayer => {
-                    const player = playerData.find(p => p.id === updatedPlayer.id);
-                    if (player) {
-                        player.distance = updatedPlayer.distance;
-                    }
-                });
-                updatePlayerPositions();
-                renderLeaderboard();
-                break;
-
-            case 'npcUpdate':
-                // Update NPCs with the new data
-                message.players.forEach(updatedNPC => {
-                    const npc = playerData.find(p => p.id === updatedNPC.id);
-                    if (npc) {
-                        npc.lane = updatedNPC.lane;
-                    }
-                });
-                updateBarChart();
-                break;
-
-            case 'raceState':
-                // Sync race state from server
-                playerData = message.players;
-                updateElapsedTime(message.elapsedTime);
-                renderLeaderboard();
-                break;
-
-            default:
-                console.log('Unknown message type:', message.type);
+        if (messageData instanceof Blob) {
+            // Handle the Blob
+            const reader = new FileReader();
+            reader.onload = function() {
+                const textData = reader.result;
+                handleMessage(textData);
+            };
+            reader.readAsText(messageData);
+        } else {
+            // Handle normal text message
+            handleMessage(messageData);
         }
     };
+
+    function handleMessage(message) {
+        try {
+            const parsedMessage = JSON.parse(message);
+
+            switch (parsedMessage.type) {
+                case 'startRace':
+                    // Handle the start of the race
+                    playerData = parsedMessage.players;
+                    renderPlayers();
+                    break;
+                case 'laneChange':
+                    const player = playerData.find(p => p.id === parsedMessage.playerId);
+                    if (player) {
+                        player.lane = parsedMessage.newLane;
+                        player.laneSwitches = parsedMessage.laneSwitches;
+                        updateLaneChangesDisplay();
+                        updateBarChart();
+                    }
+                    break;
+                case 'updateDistance':
+                    parsedMessage.players.forEach(updatedPlayer => {
+                        const player = playerData.find(p => p.id === updatedPlayer.id);
+                        if (player) {
+                            player.distance = updatedPlayer.distance;
+                        }
+                    });
+                    updatePlayerPositions();
+                    renderLeaderboard();
+                    break;
+                case 'npcUpdate':
+                    parsedMessage.players.forEach(updatedNPC => {
+                        const npc = playerData.find(p => p.id === updatedNPC.id);
+                        if (npc) {
+                            npc.lane = updatedNPC.lane;
+                        }
+                    });
+                    updateBarChart();
+                    break;
+                case 'raceState':
+                    playerData = parsedMessage.players;
+                    updateElapsedTime(parsedMessage.elapsedTime);
+                    renderLeaderboard();
+                    break;
+                default:
+                    console.log('Unknown message type:', parsedMessage.type);
+            }
+        } catch (err) {
+            console.error('Failed to parse message:', message, err);
+        }
+    }
+
 
 
   // When the connection is closed
@@ -395,47 +408,52 @@ function getPlayersInLanes() {
     return playersInLane;
 }
 
-function updatePlayerPositions() {
-    const totalPathLength = trackPath.getTotalLength();
+    function updatePlayerPositions() {
+        const totalPathLength = trackPath.getTotalLength();
 
-    playerData.forEach(player => {
-        const traveledLength = (player.distance / raceDistance) * totalPathLength;
-        const { x, y } = trackPath.getPointAtLength(traveledLength); // Get position on path
+        playerData.forEach(player => {
+            const traveledLength = (player.distance / raceDistance) * totalPathLength;
+            const { x, y } = trackPath.getPointAtLength(traveledLength); // Get position on path
 
-        if (!player.marker) {
-            const marker = document.createElement('div');
-            marker.classList.add('player-marker');
+            if (!player.marker) {
+                const marker = document.createElement('div');
+                marker.classList.add('player-marker');
 
-            // For Player 1, use the uploaded image if available
-            if (player.id === 1) {
-                marker.classList.add('player1-marker'); // Ensure the container has higher z-index
-                if (player1Image) {
-                    const img = document.createElement('img');
-                    img.src = player1Image;
-                    img.style.width = '20px';
-                    img.style.height = '20px';
-                    marker.appendChild(img);
+                // For Player 1, use the uploaded image if available
+                if (player.id === 1) {
+                    marker.classList.add('player1-marker'); // Ensure the container has higher z-index
+                    if (player1Image) {
+                        const img = document.createElement('img');
+                        img.src = player1Image;
+                        img.style.width = '20px';
+                        img.style.height = '20px';
+                        marker.appendChild(img);
+                    } else {
+                        // If no image is uploaded, default to a green square
+                        marker.style.width = '20px';
+                        marker.style.height = '20px';
+                        marker.style.backgroundColor = 'green';
+                    }
                 } else {
-                    // If no image is uploaded, default to a green square
-                    marker.style.width = '20px';
-                    marker.style.height = '20px';
-                    marker.style.backgroundColor = 'green';
+                    // Default: Square for NPCs
+                    marker.textContent = '■';
+                    marker.classList.add('npc-marker');
                 }
-            } else {
-                // Default: Square for NPCs
-                marker.textContent = '■';
-                marker.classList.add('npc-marker');
+
+                trackContainer.appendChild(marker); // Append marker to the track container
+                player.marker = marker; // Store reference to marker element
             }
 
-            trackContainer.appendChild(marker); // Append marker to the track container
-            player.marker = marker; // Store reference to marker element
-        }
+            // Update marker position, but first check if marker exists
+            if (player.marker) {
+                player.marker.style.left = `${x}px`;
+                player.marker.style.top = `${y}px`;
+            } else {
+                console.error(`Player marker for player ${player.id} not found`);
+            }
+        });
+    }
 
-        // Update marker position
-        player.marker.style.left = `${x}px`;
-        player.marker.style.top = `${y}px`;
-    });
-}
 
 
 function startRace() {
