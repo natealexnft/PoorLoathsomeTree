@@ -236,7 +236,8 @@ let stoppedLanes = Array(lanes).fill(0); // To track how many cycles the lane is
 let startTime = null; // Track when the race starts
 
   // Connect to the WebSocket server
-  const ws = new WebSocket('ws://localhost:8080');
+    const ws = new WebSocket('wss://poorloathsometree.onrender.com');
+
 
   // When the connection is open
   ws.onopen = () => {
