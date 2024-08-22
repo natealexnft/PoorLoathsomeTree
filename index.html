@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base Race</title>
+    <style>
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-color: black; /* Dark mode background */
+    color: white; /* White text */
+}
+
+h1, h2, p {
+    color: white; /* Ensure headers and paragraphs are white */
+}
+
+        .lane-container {
+            display: flex;
+            justify-content: space-between;
+            width: 500px;
+            margin: 20px auto;
+            height: 250px; /* Set the height of the lane container to match the maximum bar height */
+        }
+        .lane {
+            width: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        .bar {
+            width: 40px;
+            background-color: lightblue;
+            transition: height 0.5s;
+        }
+        .player-lane {
+            background-color: lightgreen;
+        }
+        .title {
+            font-size: 24px;
+            margin-bottom: 10px;        
+              color: white; /* Title in white */
+        }
+.track-container {
+    transform: scale(200%) translate(0%, 25%);;
+    position: relative; /* Markers will be positioned relative to the SVG */
+    margin: 20px auto;
+    width: 600px;
+    height: 400px;
+}
+
+.player-marker {
+    position: absolute; /* Absolutely position the markers relative to the .track-container */
+    font-size: 40px;
+    font-weight: bold;
+    transform: translate(-50%, -50%); /* Center the markers */
+    z-index: 10; /* Ensure they appear on top of the SVG */
+}
+        .npc-marker {
+            color: red;
+            z-index: 10;
+        }
+        .player1-marker {
+            color: green;
+            z-index: 20; /* Ensure they appear on top of the SVG */
+        }
+        .player1-marker img {
+            z-index: 20; /* Ensure Player 1's image is also on top */
+        }
+
+#leaderboardContainer {
+    display: grid;
+    grid-template-columns: 1fr; /* Make title a full-width element */
+    justify-items: center; /* Center the title */
+}
+
+#leaderboard {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 4 equal columns */
+    grid-gap: 8px;
+    width: 60%; /* Ensure full width for grid */
+    font-size: 12px;
+  color: white;
+}
+
+#leaderboardTitle {
+    grid-column: span 4; /* Make the title span all 4 columns */
+    text-align: center;
+    margin-bottom: 10px;
+  color: white;
+}
+
+#playerRank {
+    font-weight: bold;
+    color: red; /* Highlight rank in red */
+    text-align: center; /* Center the rank text */
+    grid-column: span 4; /* Ensure it spans the full width */
+    margin-top: 20px;
+}
+
+/* Dark mode button styles */
+button {
+    background-color: #333; /* Dark button background */
+    color: white; /* Button text color */
+    border: 1px solid white;
+    padding: 10px 20px;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+button:hover {
+    background-color: #555; /* Slightly lighter on hover */
+}
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 100; /* Sits on top of everything */
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Black with opacity */
+}
+
+.modal-content {
+  background-color: #222;
+  color: white;
+  margin: 15% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 50%; /* Adjust width as needed */
+  text-align: left; /* Aligns the text to the left */
+}
+
+.close {
+  color: white;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+  color: #bbb;
+  text-decoration: none;
+  cursor: pointer;
+}      
+    </style>
+</head>
+<body>
+
+<h1>Base Race / Flow Go / Blast Fast</h1>
+  <button id="readMeButton">READ ME FIRST</button>
+<br><br>
+  <label for="imageUpload">Upload image: </label>
+<input type="file" id="imageUpload" accept="image/png, image/jpeg">
+  <br><br>
+<button id="startRaceButton">Start Race</button>
+
+<div id="readMeModal" class="modal">
+  <div class="modal-content">
+    <span class="close">&times;</span>
+    <h2>Hello. Welcome to Base Race.</h2>
+    <p>
+      To qualify for the championship race, you'll need to place in the top 1/3rd of contestants. Everyone else will be eliminated (killed).
+    </p>
+    <p>
+      Once the race begins, you will start moving down the track. If you have a "lane change" available, you have the ability to move left or right into a new lane.
+    </p>
+    <p>
+      Lower traffic - indicated by the bar chart - in a lane means you will be able to move down the track more quickly. Lane changes are granted once every 10 seconds (50 cycles). You are allowed to queue up to 4 of them. Your lane is indicated in green on the bar chart. Occasionally a lane will turn red indicating dead stop traffic. This will last for 2 seconds (10 cycles).
+    </p>
+    <p>
+      A single loop of the track is 5 miles. The race ends as soon as the first car crosses the finish line. The top third of players are spared and granted access into the Race of Champions.
+    </p>
+    <p>
+      Good luck and try not to die.
+    </p>
+  </div>
+</div>
+
+<div id="leaderboardContainer">
+    <h2 id="leaderboardTitle">Leaderboard</h2> <!-- Title will be centered -->
+    <div id="leaderboard"></div> <!-- Leaderboard grid -->
+    <div id="playerRank" style="display: none;"></div> <!-- Hidden until needed -->
+</div>
+
+<br><br>
+<div id="elapsedTime">Elapsed time: 0s</div> <!-- New element for elapsed time -->  
+<!-- Title for the bar chart -->
+<div class="lane-container" id="laneContainer"></div>
+
+ <div>
+    <button id="goLeft" disabled>Go Left</button>
+    <button id="goRight" disabled>Go Right</button>
+</div> 
+
+<div id="laneChanges">Lane changes available: 1</div> <!-- New element for lane changes -->
+
+  <!-- SVG Track -->
+<div id="trackContainer" class="track-container">
+    <svg id="raceTrackSVG" width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+
+  <pattern id="checkeredPattern" width="8" height="8" patternUnits="userSpaceOnUse">
+    <rect width="4" height="4" fill="black" />
+    <rect x="4" width="4" height="4" fill="white" />
+    <rect y="4" width="4" height="4" fill="white" />
+    <rect x="4" y="4" width="4" height="5" fill="black" />
+  </pattern>    
+        <path id="trackPath" stroke="white" fill="transparent" stroke-width="12" d="M32 210c8 73 67 105 118 136 52 31 43-5 97-1s48-35 86-54 28 28 54 62c26 33 68-41 39-111-30-70-7-198 45-215 52-18 101 126 75 157-25 31-205-42-202-112 4-70-160-74-152 18s-60 65-88 44c-29-20-81 3-73 76z"/>
+      <path id="trackPath" stroke="black" fill="transparent" stroke-width="2" stroke-dasharray="4,4" d="M32 210c8 73 67 105 118 136 52 31 43-5 97-1s48-35 86-54 28 28 54 62c26 33 68-41 39-111-30-70-7-198 45-215 52-18 101 126 75 157-25 31-205-42-202-112 4-70-160-74-152 18s-60 65-88 44c-29-20-81 3-73 76z"/>     
+        <rect x="0" y="206" width="64" height="16" fill="url(#checkeredPattern)" />
+    </svg>
+</div>
+
+<script>
+// Fetch the SVG path element
+const trackPath = document.getElementById('trackPath');  
+const trackContainer = document.getElementById('trackContainer'); // Now it's correctly defined
+
+// Initialize players and lanes
+const lanes = 11;
+const totalPlayers = 120;
+let playerData = [];
+const laneContainer = document.getElementById('laneContainer');
+let gameActive = false; // Game status flag
+const raceDistance = 2; // Race ends at 3 miles
+const maxLaneSwitches = 4; // Maximum lane switches stored
+let gameInterval, npcInterval, laneSwitchInterval; // Timers
+let stoppedLanes = Array(lanes).fill(0); // To track how many cycles the lane is stopped (0 means not stopped)
+let startTime = null; // Track when the race starts
+
+  // Connect to the WebSocket server
+  const ws = new WebSocket('ws://localhost:8080');
+
+  // When the connection is open
+  ws.onopen = () => {
+    console.log('Connected to WebSocket server');
+  };
+
+    // When a message is received from the server
+    ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+
+        switch (message.type) {
+            case 'startRace':
+                // Update player data with the one received from the server
+                playerData = message.players;
+                renderPlayers();
+                break;
+
+            case 'laneChange':
+                // Update the lane change for a specific player
+                const player = playerData.find(p => p.id === message.playerId);
+                if (player) {
+                    player.lane = message.newLane;
+                    player.laneSwitches = message.laneSwitches;
+                    updateLaneChangesDisplay();
+                    updateBarChart();
+                }
+                break;
+
+            case 'updateDistance':
+                // Update the distances for players
+                message.players.forEach(updatedPlayer => {
+                    const player = playerData.find(p => p.id === updatedPlayer.id);
+                    if (player) {
+                        player.distance = updatedPlayer.distance;
+                    }
+                });
+                updatePlayerPositions();
+                renderLeaderboard();
+                break;
+
+            case 'npcUpdate':
+                // Update NPCs with the new data
+                message.players.forEach(updatedNPC => {
+                    const npc = playerData.find(p => p.id === updatedNPC.id);
+                    if (npc) {
+                        npc.lane = updatedNPC.lane;
+                    }
+                });
+                updateBarChart();
+                break;
+
+            case 'raceState':
+                // Sync race state from server
+                playerData = message.players;
+                updateElapsedTime(message.elapsedTime);
+                renderLeaderboard();
+                break;
+
+            default:
+                console.log('Unknown message type:', message.type);
+        }
+    };
+
+
+  // When the connection is closed
+  ws.onclose = () => {
+    console.log('Disconnected from WebSocket server');
+  };
+
+  // Function to send a message to the WebSocket server
+  function sendMessage(message) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(message);
+    }
+  }
+
+// Get modal elements
+const modal = document.getElementById('readMeModal');
+const closeModal = document.getElementsByClassName('close')[0];
+
+// Open the modal when clicking the "READ ME FIRST" button
+document.getElementById('readMeButton').addEventListener('click', () => {
+    modal.style.display = 'block';
+});
+
+// Close the modal when the "x" is clicked
+closeModal.onclick = function() {
+    modal.style.display = 'none';
+};
+
+// Close the modal if user clicks anywhere outside of it
+window.onclick = function(event) {
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
+};
+
+// Variable to store the resized image
+let player1Image = null;
+
+// Function to handle the image upload and resize it to 32x32
+function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.src = e.target.result;
+
+        img.onload = function() {
+            // Create a canvas to resize the image
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // Set the canvas size to 32x32
+            canvas.width = 32;
+            canvas.height = 32;
+
+            // Draw the uploaded image onto the canvas, scaling it down to 32x32
+            ctx.drawImage(img, 0, 0, 32, 32);
+
+            // Get the resized image as a data URL
+            player1Image = canvas.toDataURL('image/png');
+        };
+    };
+
+    reader.readAsDataURL(file);
+}
+
+// Add event listener to file input for image upload
+document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
+
+function assignPlayersToLanes() {
+    playerData = [];
+    for (let i = 1; i <= totalPlayers; i++) {
+        let lane = Math.floor(Math.random() * lanes) + 1;
+        playerData.push({ 
+            id: i, 
+            lane: lane, 
+            laneSwitches: 1, // Start with 1 lane switch available
+            laneSwitchCount: 0, // Start with 0 lane switches used
+            distance: 0, // Initialize distance at 0
+            speed: 0 // Initialize speed at 0
+        });
+    }
+}
+
+  // Function to count the number of players in each lane
+function getPlayersInLanes() {
+    const playersInLane = Array(lanes).fill(0);
+    playerData.forEach(player => {
+        playersInLane[player.lane - 1]++;
+    });
+    return playersInLane;
+}
+
+function updatePlayerPositions() {
+    const totalPathLength = trackPath.getTotalLength();
+
+    playerData.forEach(player => {
+        const traveledLength = (player.distance / raceDistance) * totalPathLength;
+        const { x, y } = trackPath.getPointAtLength(traveledLength); // Get position on path
+
+        if (!player.marker) {
+            const marker = document.createElement('div');
+            marker.classList.add('player-marker');
+
+            // For Player 1, use the uploaded image if available
+            if (player.id === 1) {
+                marker.classList.add('player1-marker'); // Ensure the container has higher z-index
+                if (player1Image) {
+                    const img = document.createElement('img');
+                    img.src = player1Image;
+                    img.style.width = '20px';
+                    img.style.height = '20px';
+                    marker.appendChild(img);
+                } else {
+                    // If no image is uploaded, default to a green square
+                    marker.style.width = '20px';
+                    marker.style.height = '20px';
+                    marker.style.backgroundColor = 'green';
+                }
+            } else {
+                // Default: Square for NPCs
+                marker.textContent = '■';
+                marker.classList.add('npc-marker');
+            }
+
+            trackContainer.appendChild(marker); // Append marker to the track container
+            player.marker = marker; // Store reference to marker element
+        }
+
+        // Update marker position
+        player.marker.style.left = `${x}px`;
+        player.marker.style.top = `${y}px`;
+    });
+}
+
+
+function startRace() {
+    startTime = Date.now(); // Record the start time
+    clearMarkers();  // Clear old markers before starting a new race  
+
+    assignPlayersToLanes(); // Assign players first
+
+    // Notify the server that the race has started with the initial player data
+    const startMessage = JSON.stringify({ type: 'startRace', players: playerData });
+    sendMessage(startMessage);
+    
+    renderPlayers();
+    renderLeaderboard();
+    renderLaneStats();
+
+    setupControls(); // Setup controls after players are initialized
+    updateLaneChangesDisplay(); // Update lane changes display when race starts
+
+    gameActive = true;
+    document.getElementById('goLeft').disabled = false;
+    document.getElementById('goRight').disabled = false;
+
+
+    // Start game loop and intervals
+    gameInterval = setInterval(gameLoop, 200); // Start game loop
+    npcInterval = setInterval(npcBehavior, 10000); // NPCs act every 10 seconds
+    laneSwitchInterval = setInterval(incrementLaneSwitches, 10000); // Increment lane switches every 10 seconds
+}
+
+
+// Function to reset and prepare a new race
+function resetRace() {
+    //clearMarkers(); // Clear old markers  
+
+    clearInterval(gameInterval);
+    clearInterval(npcInterval);
+    clearInterval(laneSwitchInterval);
+    gameActive = false;
+    stoppedLanes.fill(0); // Clear all stopped lanes
+
+
+    document.getElementById('goLeft').disabled = true;
+    document.getElementById('goRight').disabled = true;
+    document.getElementById('startRaceButton').disabled = false;
+}  
+
+  function clearMarkers() {
+    document.querySelectorAll('.player-marker').forEach(marker => {
+        marker.remove();
+    });
+}
+
+// Function to calculate speed based on the number of players in each lane
+function calculateSpeed() {
+    const playersInLane = {};
+    playerData.forEach(player => {
+        if (!playersInLane[player.lane]) {
+            playersInLane[player.lane] = 0;
+        }
+        playersInLane[player.lane]++;
+    });
+
+    playerData.forEach(player => {
+        const numPlayersInLane = playersInLane[player.lane];
+        if (stoppedLanes[player.lane - 1] > 0) {
+            player.speed = 0; // If lane is stopped, set speed to 0
+        } else {
+            player.speed = 70 / numPlayersInLane; // Otherwise, normal speed calculation
+        }
+    });
+}
+// Function to update distance based on speed
+    function updateDistance() {
+        playerData.forEach(player => {
+            player.distance += player.speed * (1 / 3600); // Update every second (1000ms)
+        });
+
+        // Send the updated player distances to the WebSocket server
+        const distanceMessage = JSON.stringify({
+            type: 'updateDistance',
+            players: playerData.map(player => ({ id: player.id, distance: player.distance }))
+        });
+        sendMessage(distanceMessage);
+    }
+
+  // Function to handle lane switching
+    function switchLane(player, direction) {
+        if (player.laneSwitches <= 0) return; // No available lane switches
+
+        let newLane = player.lane + direction;
+        if (newLane >= 1 && newLane <= lanes) {
+            player.lane = newLane;
+            player.laneSwitches--; // Consume one lane switch
+            player.laneSwitchCount++; // Increment the lane switch counter
+            updateLaneChangesDisplay(); // Update the lane changes display when player switches lanes
+            updateBarChart(); // Update the bar chart when the player switches lanes
+
+            // Send the updated player info to the WebSocket server
+            const message = JSON.stringify({
+                type: 'laneChange',
+                playerId: player.id,
+                newLane: player.lane,
+                laneSwitches: player.laneSwitches
+            });
+            sendMessage(message);
+        }
+    }
+
+
+function updateLaneChangesDisplay() {
+    const laneChangesDiv = document.getElementById('laneChanges');
+    const player1 = playerData.find(player => player.id === 1); // Find Player 1
+    laneChangesDiv.textContent = `Lane changes available: ${player1.laneSwitches}`;
+}
+
+// NPCs may decide to use their lane switches or hoard them
+    function npcBehavior() {
+        playerData.forEach(player => {
+            if (player.id !== 1 && player.laneSwitches > 0) {
+                const decision = Math.random();
+                if (decision < 0.05) {
+                    const switchesToUse = Math.floor(Math.random() * player.laneSwitches) + 1;
+                    const direction = Math.random() < 0.5 ? -1 : 1;
+
+                    for (let i = 0; i < switchesToUse; i++) {
+                        switchLane(player, direction);
+                    }
+                }
+            }
+        });
+
+        // Send NPC updates to the server
+        const npcUpdateMessage = JSON.stringify({
+            type: 'npcUpdate',
+            players: playerData.filter(player => player.id !== 1) // Send NPC data only
+        });
+        sendMessage(npcUpdateMessage);
+
+        updateBarChart(); // Update the bar chart when NPCs switch lanes
+    }
+    
+// Function to render the players and their info
+function renderPlayers() {
+//    const playersDiv = document.getElementById('players');
+//    playersDiv.innerHTML = ''; // Clear the display
+
+    playerData.forEach(player => {
+        const playerElement = document.createElement('div');
+        playerElement.textContent = `P${player.id}: Lane Switches: ${player.laneSwitches} & Lane ${player.lane} & Switch Count: ${player.laneSwitchCount} & Distance: ${player.distance.toFixed(2)} miles`;
+//        playersDiv.appendChild(playerElement);
+    });
+}
+
+function renderLeaderboard() {
+    const leaderboardDiv = document.getElementById('leaderboard');
+    const playerRankDiv = document.getElementById('playerRank');
+    leaderboardDiv.innerHTML = ''; // Clear leaderboard first
+
+    // Calculate the top 1/3rd of players dynamically
+    const totalPlayers = playerData.length;
+    const topFraction = Math.ceil(totalPlayers / 3); // Top 1/3rd of players
+
+    // Sort players by distance
+    const sortedPlayers = [...playerData].sort((a, b) => b.distance - a.distance);
+
+    // Extract the top players based on the topFraction calculation
+    const topPlayers = sortedPlayers.slice(0, topFraction);
+
+    // Create 4-column grid but counting vertically
+    const numRows = Math.ceil(topPlayers.length / 4); // Calculate the number of rows
+    for (let row = 0; row < numRows; row++) {
+        for (let col = 0; col < 4; col++) {
+            const index = col * numRows + row; // Adjust the index for vertical counting
+            if (index < topPlayers.length) {
+                const player = topPlayers[index];
+                const playerElement = document.createElement('div');
+
+                // Highlight Player 1 in green
+                if (player.id === 1) {
+                    playerElement.style.fontWeight = 'bold';
+                    playerElement.style.color = 'green'; // Highlight Player 1
+                }
+
+                playerElement.textContent = `#${index + 1}: P${player.id} - ${player.distance.toFixed(2)} miles`;
+                leaderboardDiv.appendChild(playerElement);
+            }
+        }
+    }
+
+    // Check Player 1's current rank
+    const player1Rank = sortedPlayers.findIndex(player => player.id === 1) + 1;
+
+    // Center the rank information below the leaderboard
+    playerRankDiv.style.display = 'block'; // Always show the rank
+    playerRankDiv.style.textAlign = 'center'; // Center the rank
+
+    // Set the color: green if in the top third, red if not
+    if (player1Rank <= topFraction) {
+        playerRankDiv.style.color = 'green';
+        playerRankDiv.textContent = `Your current rank: #${player1Rank} (Top 1/3rd)`;
+    } else {
+        playerRankDiv.style.color = 'red';
+        playerRankDiv.textContent = `Your current rank: #${player1Rank}`;
+    }
+}
+
+
+
+
+
+// Function to render lane stats
+function renderLaneStats() {
+//    const laneStatsDiv = document.getElementById('laneStats');
+//    laneStatsDiv.innerHTML = '<h2>Lane Stats</h2>';
+
+    const playersInLane = {};
+    playerData.forEach(player => {
+        if (!playersInLane[player.lane]) {
+            playersInLane[player.lane] = 0;
+        }
+        playersInLane[player.lane]++;
+    });
+
+    for (let i = 1; i <= lanes; i++) {
+        const laneElement = document.createElement('div');
+        laneElement.textContent = `Lane ${i} - (${playersInLane[i] || 0} players)`;
+ //       laneStatsDiv.appendChild(laneElement);
+    }
+}
+
+// Game loop: update every 1000ms (existing logic)
+function gameLoop() {
+    if (!gameActive) return;
+
+    calculateSpeed();
+    updateDistance();
+    npcBehavior();
+    renderPlayers();
+    renderLeaderboard();
+    renderLaneStats();
+    updateElapsedTime();
+
+      // Conditionally update leaderboard if there are significant changes
+    if (shouldUpdateLeaderboard()) {
+        renderLeaderboard();
+    }
+
+    // Update race track positions
+    updatePlayerPositions();
+
+  // Random chance to stop a lane (1/100 chance)
+if (Math.random() < 0.03) {
+    let randomLane = Math.floor(Math.random() * lanes);
+    if (stoppedLanes[randomLane] === 0) { // Only stop if lane isn't already stopped
+        stoppedLanes[randomLane] = 10; // Stop the lane for 10 cycles
+    }
+}
+
+// Decrement stop counters for any stopped lanes
+stoppedLanes.forEach((stopCount, index) => {
+    if (stopCount > 0) {
+        stoppedLanes[index]--; // Decrease stop counter each cycle
+    }
+});
+
+    // Send periodic race state updates
+    const raceStateMessage = JSON.stringify({
+        type: 'raceState',
+        players: playerData,
+        elapsedTime: Math.floor((Date.now() - startTime) / 1000)
+    });
+    sendMessage(raceStateMessage);
+    
+const winner = playerData.find(player => player.distance >= raceDistance);
+if (winner) {
+    gameActive = false;
+
+    // Sort players by distance
+    const sortedPlayers = [...playerData].sort((a, b) => b.distance - a.distance);
+    const player1Rank = sortedPlayers.findIndex(player => player.id === 1) + 1;
+    const topPercentile = player1Rank / totalPlayers;
+
+    // Dynamic response based on player's final rank
+    let responseMessage = `Race over! Player ${winner.id} wins! `;
+
+    if (player1Rank === 1) {
+        responseMessage += `You have vanquished the competition. I'd wish you luck in the Race of Champions, but it's clear you don't need it.`;
+    } else if (topPercentile <= 0.10) {
+        responseMessage += `Well done, you have placed in the top 10%. You'll be a worthy opponent in the Race of Champions.`;
+    } else if (topPercentile <= 0.17) {
+        responseMessage += `Congratulations, you've comfortably made it into the Race of Champions. Will you win? Probably not, but maybe the other players will forget to show up.`;
+    } else if (topPercentile <= 0.33) {
+        responseMessage += `Look, I don't fancy your chances in the Race of Champions, but at least you are alive.`;
+    } else {
+        responseMessage += `Hate to be the bearer of bad news, but you did not qualify for the Race of Champions. Sorry. Come with us.`;
+    }
+
+    alert(responseMessage); // Show the dynamic message
+    resetRace();
+}
+}
+
+// Function to handle the start button click
+document.getElementById('startRaceButton').addEventListener('click', () => {
+    document.getElementById('startRaceButton').disabled = true; // Disable button after starting the race
+    startRace();
+});  
+
+// Function to decide when the leaderboard should be updated
+function shouldUpdateLeaderboard() {
+    // Implement logic to update leaderboard at specific intervals or when positions change
+    return true; // For simplicity, you can decide the condition here
+}  
+
+function updateElapsedTime() {
+    if (startTime) {
+        const now = Date.now();
+        const elapsedSeconds = Math.floor((now - startTime) / 1000);
+        const elapsedTimeDiv = document.getElementById('elapsedTime');
+        elapsedTimeDiv.textContent = `Elapsed time: ${elapsedSeconds}s`;
+    }
+}  
+
+// Player 1 controls using buttons
+function setupControls() {
+    const goLeftButton = document.getElementById('goLeft');
+    const goRightButton = document.getElementById('goRight');
+    const player1 = playerData.find(player => player.id === 1);
+
+    goLeftButton.addEventListener('click', () => {
+        if (player1.laneSwitches > 0) switchLane(player1, -1);
+    });
+
+    goRightButton.addEventListener('click', () => {
+        if (player1.laneSwitches > 0) switchLane(player1, 1);
+    });
+}
+
+// Increment available lane switches every 10 seconds, up to maxLaneSwitches
+function incrementLaneSwitches() {
+    playerData.forEach(player => {
+        if (player.laneSwitches < maxLaneSwitches) {
+            player.laneSwitches++;
+        }
+    });
+    updateLaneChangesDisplay(); // Update the lane changes display after incrementing lane switches
+    updateBarChart(); // Update the bar chart after incrementing lane switches
+}
+
+// Function to update the bar chart
+function updateBarChart() {
+    const playersInLane = getPlayersInLanes();
+    const totalPlayers = playerData.length;
+
+    const maxBarHeight = 300; // Static maximum bar height in pixels
+    const maxPercentage = 0.5; // Maximum percentage (50% of total players)
+
+    laneContainer.innerHTML = ''; // Clear the container
+
+    playersInLane.forEach((count, index) => {
+        const laneDiv = document.createElement('div');
+        laneDiv.classList.add('lane');
+
+        // Calculate the percentage of players in this lane, scaled by maxPercentage
+        const percentage = count / totalPlayers;
+        const barHeight = Math.min(percentage / maxPercentage * maxBarHeight, maxBarHeight); // Cap the height
+
+        // Bar representing the percentage of cars in the lane
+        const barDiv = document.createElement('div');
+        barDiv.classList.add('bar');
+        barDiv.style.height = `${barHeight}px`; // Set the height with static scaling
+
+        // If player 1 is in this lane, highlight the bar in green
+        if (playerData[0].lane === index + 1) {
+            barDiv.classList.add('player-lane');
+        }
+
+        // If lane is stopped, color the bar red
+        if (stoppedLanes[index] > 0) {
+            barDiv.style.backgroundColor = 'red';
+        }
+
+        laneDiv.appendChild(barDiv);
+        laneContainer.appendChild(laneDiv);
+    });
+}
+
+
+// Initialize game
+assignPlayersToLanes();
+updatePlayerPositions(); // Initialize player positions
+updateBarChart();
+renderPlayers();
+setupControls();
+
+  </script>
+</body>
+</html>
